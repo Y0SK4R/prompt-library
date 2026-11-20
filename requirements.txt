@@ -1,2 +1,7 @@
 # Runtime dependency for the desktop UI. SQLite is provided by Python's stdlib.
 PySide6>=6.8,<7
+
+# Build a standalone Windows executable with:
+# python -m pip install -r requirements.txt
+# python -m PyInstaller --noconfirm --clean --windowed --onefile --name PromptLibrary --paths src src/prompt_library/__main__.py
+pyinstaller>=6.10,<7; sys_platform == "win32"

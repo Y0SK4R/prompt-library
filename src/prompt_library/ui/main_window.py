@@ -151,6 +151,9 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setStretchFactor(2, 3)
+        # QSplitter otherwise starts the prompt list at its small size hint,
+        # leaving titles clipped even on a full-size window.
+        splitter.setSizes([200, 360, 588])
         outer.addWidget(splitter, 1)
         self.setCentralWidget(root)
         self.setStyleSheet("""
@@ -184,7 +187,8 @@ class MainWindow(QMainWindow):
         self.store.seed_samples()
         self.refresh_categories()
         self.refresh_prompts()
-        self.new_prompt()
+        # Start in a clean editor without prompting about the initial empty form.
+        self._reset_editor()
 
     def refresh_categories(self) -> None:
         _block = QSignalBlocker(self.categories)
@@ -224,6 +228,11 @@ class MainWindow(QMainWindow):
         if current is None:
             return
         if not self._confirm_discard():
+            # QListWidget has already changed its current row when this signal
+            # fires. Restore the editor's row so selection and edited record
+            # cannot diverge after the user cancels navigation.
+            with QSignalBlocker(self.prompt_list):
+                self.prompt_list.setCurrentItem(_previous)
             return
         try:
             prompt = self.store.get_prompt(current.data(Qt.ItemDataRole.UserRole))
@@ -245,6 +254,9 @@ class MainWindow(QMainWindow):
     def new_prompt(self) -> None:
         if not self._confirm_discard():
             return
+        self._reset_editor()
+
+    def _reset_editor(self) -> None:
         self._loading = True
         self.prompt_list.clearSelection()
         self._selected_id = None

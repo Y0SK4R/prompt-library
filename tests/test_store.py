@@ -1,8 +1,10 @@
 import json
 
 import pytest
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from prompt_library.data import PromptStore
+from prompt_library.ui.main_window import MainWindow
 
 
 def test_seed_persistence_filters_trash_and_restore(tmp_path):
@@ -81,3 +83,44 @@ def test_json_roundtrip_and_invalid_import_is_atomic(tmp_path):
     assert destination.export_json() == before
     source.close()
     destination.close()
+
+
+def test_cancel_navigation_keeps_editor_and_selection_on_same_prompt(tmp_path, monkeypatch):
+    app = QApplication.instance() or QApplication([])
+    store = PromptStore(tmp_path / "ui.sqlite3")
+    store.seed_samples()
+    window = MainWindow(store)
+    first = window.prompt_list.item(0)
+    second = window.prompt_list.item(1)
+    window.prompt_list.setCurrentItem(first)
+    original_id = window._selected_id
+    original_title = window.title_edit.text()
+    window.title_edit.setText("Unsaved edit")
+    monkeypatch.setattr(
+        QMessageBox, "question",
+        lambda *args, **kwargs: QMessageBox.StandardButton.Cancel,
+    )
+
+    window.prompt_list.setCurrentItem(second)
+
+    assert window.prompt_list.currentItem() is first
+    assert window._selected_id == original_id
+    assert window.title_edit.text() == "Unsaved edit"
+    window.close()
+    store.close()
+
+
+def test_prompt_list_gets_readable_initial_splitter_width(tmp_path):
+    app = QApplication.instance() or QApplication([])
+    store = PromptStore(tmp_path / "splitter.sqlite3")
+    window = MainWindow(store)
+    window.resize(1180, 760)
+    window.show()
+    app.processEvents()
+
+    assert window.categories.width() <= 210
+    assert window.prompt_list.width() >= 280
+    assert window.body.width() >= 500
+
+    window.close()
+    store.close()

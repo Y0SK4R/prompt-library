@@ -1,25 +1,29 @@
-# QA and Release Status — 2026-11-19
+﻿# QA and Release Status — 2026-11-19
 
-## Foundation verification
+## Result
 
-**Result: storage Foundation checks pass; complete Foundation/release gate remains open.** Regression tests cover malformed category IDs and destination-data atomicity. Qt launch and Windows packaging have not been exercised.
+The packaged Windows application launches and renders. The prompt list initially occupied only 97 px in an 1180 px window, clipping prompt titles; it now occupies 321 px after an initial splitter sizing fix. Source tests and compilation pass, and a separate packaged build succeeded. This is a local QA result, not a release verification.
 
-### Checks run
+## Checks run — 2026-11-19
 
-- Python 3.14.5, pytest 9.2.0, and PySide6 6.12.0 are available. PyInstaller is not installed.
-- `python -m pytest -q tests` — **2 passed**.
+- `python -m pytest -q tests` — **4 passed**, including dirty-navigation and splitter-width regressions.
 - `python -m compileall -q src tests` — passed.
-- Storage test covers idempotent sample initialization, close/reopen body and metadata persistence (Unicode, code fences, whitespace, category, tag, favorite), combined search/category/favorite filters, trash/restore, JSON transfer, Markdown content, and invalid-import atomicity.
-- Malformed category IDs (`[]`, `true`, and duplicate IDs) are rejected with `ValueError` without changing destination export data.
-- A Windows CI workflow exists at `.github/workflows/windows-build.yml`. It runs the storage suite and invokes PySide6 deploy on Python 3.12. The workflow itself has not run; it is not evidence of a successful package build.
-- An offscreen window launch attempt using a temporary SQLite file stalled during `MainWindow` construction/show and was stopped by the command timeout. Window visibility and interactive UI behavior are not verified.
+- PyInstaller 6.22.3 build to `build/qa-dist/PromptLibrary.exe` — succeeded on Windows 11 / Python 3.14.5.
+- Default `dist/PromptLibrary.exe` rebuild — blocked because the original running app held the executable open. The original app and its database were left untouched; the QA build was written to a separate folder.
+- Launched the QA executable with an isolated `%LOCALAPPDATA%` folder. At 1180 px window width, the rendered category, prompt, and editor panes measured 200 px, 321 px, and 615 px respectively.
+- In the UI, created and saved a prompt with tags and a Unicode body. Read back the temporary SQLite database and confirmed the prompt, body metadata, tags, and active state.
+- Exercised edit/save/reopen selection and the trash action in the prior packaged build. Storage tests cover persistence, trash/restore, JSON round-trip, and invalid-import atomicity.
 
-### Release risks and next checks
+## Fix made
 
-- **High likelihood / high impact:** Qt UI has not been successfully launched; PySide6 is installed, but the offscreen attempt stalled.
-- **Medium likelihood / high impact:** Windows workflow's packaging command/output path is unverified in CI. Confirm the official deploy invocation and generated artifact before relying on it.
-- **High likelihood / high impact:** packaged-app launch/edit/reopen/copy workflow remains unverified.
-- **Medium likelihood / medium impact:** automated UI/template checks have not been added; placeholder behavior, exact clipboard copying, and unsaved-change protection need verification.
-- GitHub repository `Y0SK4R/prompt-library` is public and contains the initial source. No release package is published, and the license decision remains pending.
+The horizontal splitter now starts with widths `[200, 360, 588]`. Previously its default size hints left the prompt list at 97 px in the standard 1180 px window.
 
-No release package was produced. Rollback is to withhold the package and retain the local SQLite collection; no data migration was introduced. Before distribution, run the Windows workflow, confirm the artifact, then launch it and verify editing, persistence, and exact clipboard copy.
+## UI scope gaps and remaining verification
+
+- The UI has no category creation, JSON import, or JSON export controls. These operations exist in the storage layer and JSON behavior is covered by storage tests, but the corresponding packaged user flows cannot be exercised.
+- Restore was not verified through the packaged UI. Storage-level trash/restore tests pass.
+- Packaged close-and-reopen persistence and backup recovery through normal user flows remain unverified.
+- `dist/PromptLibrary.exe` was not rebuilt because it was in use. The separate QA artifact is `build/qa-dist/PromptLibrary.exe`; it is not a published release.
+- The executable is unsigned and has not been tested on a second Windows computer. The GitHub workflow was not run, nothing was published, and no license has been selected.
+
+The app stores user data at `%LOCALAPPDATA%\PromptLibrary\prompts.sqlite3`. The interactive QA run used a temporary local data folder.
