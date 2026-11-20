@@ -1,0 +1,36 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt pytest
+      - name: Run tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = 'src'
+          python -m pytest -q tests
+      - name: Build Windows package
+        run: python -m PySide6.scripts.deploy --name PromptLibrary --force --compiler Nuitka src/prompt_library/__main__.py
+      - name: Upload package output
+        uses: actions/upload-artifact@v4
+        with:
+          name: PromptLibrary-windows
+          path: dist/
+          if-no-files-found: error
