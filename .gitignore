@@ -1,13 +1,1 @@
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.venv/
-venv/
-build/
-dist/
-*.spec
-*.sqlite3
-*.sqlite3-shm
-*.sqlite3-wal
-*.db
-*.bak
+A4EDF2D4F096C8944C66CD81F11694ABABA7DC750E7994E77FD128C7318577A8
